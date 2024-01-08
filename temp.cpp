@@ -1,95 +1,93 @@
-
 #include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <HTTPClient.h>
 
-const char* ssid     = "Snapple";
+
+const char* ssid = "Snapple";
 const char* password = "Shinsuke0531";
+const String flaskServer = "http://192.168.254.161:4000";
+const int ledPin = 13;  // Change this to the actual pin number where your LED is connected
 
-WiFiServer server(80);
+AsyncWebServer server(80);
 
+void setup() {
+  Serial.begin(115200);
 
-int pinNum = 13;
+  // Connect to Wi-Fi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+  Serial.println("Connected to WiFi");
 
-void setup()
-{
-    Serial.begin(115200);
-    pinMode(pinNum, OUTPUT);      // set the LED pin mode
+  // Configure LED pin
+  pinMode(ledPin, OUTPUT);
 
-    delay(10);
+  // Route for turning on LED
+  server.on("/on", HTTP_GET, [](AsyncWebServerRequest *request){
+    String message;
+    if (trigger_action("H")) {
+      message = "Turned on LED on ESP32";
+    } else {
+      message = "Failed to turn on LED on ESP32";
+    }
+    request->send(200, "text/plain", message);
+  });
 
-    // We start by connecting to a WiFi network
+  // Route for turning off LED
+  server.on("/off", HTTP_GET, [](AsyncWebServerRequest *request){
+    String message;
+    if (trigger_action("L")) {
+      message = "Turned off LED on ESP32";
+    } else {
+      message = "Failed to turn off LED on ESP32";
+    }
+    request->send(200, "text/plain", message);
+  });
 
-    Serial.println();
-    Serial.println();
-    Serial.print("Connecting to ");
-    Serial.println(ssid);
+  // Endpoint to receive the trigger from Flask server
+  server.on("/receive_image", HTTP_GET, [](AsyncWebServerRequest *request){
+    Serial.println("Received trigger from Flask server");
 
-    WiFi.begin(ssid, password);
+    // Make a GET request to the Flask server's /get_image endpoint to fetch the image
+    HTTPClient http;
+    http.begin(flaskServer + "/get_image"); // Replace with your Flask server's /get_image endpoint
+    int httpResponseCode = http.GET();
 
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        Serial.print(".");
+    if (httpResponseCode == HTTP_CODE_OK) {
+      Serial.println("Image fetched successfully");
+
+      // Supposed to recieve a bitmap image from /get_image and I want to save that image locally on my esp32
+      response = ... 
+      
+    } else {
+      Serial.print("Failed to fetch image. Response code: ");
+      Serial.println(httpResponseCode);
     }
 
-    Serial.println("");
-    Serial.println("WiFi connected.");
-    Serial.println("IP address: ");
-    Serial.println(WiFi.localIP());
-    
-    server.begin();
+    http.end();
+    request->send(200, "text/plain", "Image received and processed");
+  });
 
+  // Start server
+  server.begin();
 }
 
-void loop(){
- WiFiClient client = server.available();   // listen for incoming clients
+void loop() {
+  // Other code in loop if needed
+}
 
-  if (client) {                             // if you get a client,
-    Serial.println("New Client.");           // print a message out the serial port
-    String currentLine = "";                // make a String to hold incoming data from the client
-    while (client.connected()) {            // loop while the client's connected
-      if (client.available()) {             // if there's bytes to read from the client,
-        char c = client.read();             // read a byte, then
-        Serial.write(c);                    // print it out the serial monitor
-        if (c == '\n') {                    // if the byte is a newline character
-
-          // if the current line is blank, you got two newline characters in a row.
-          // that's the end of the client HTTP request, so send a response:
-          if (currentLine.length() == 0) {
-            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-            // and a content-type so the client knows what's coming, then a blank line:
-            client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:text/html");
-            client.println();
-
-            // the content of the HTTP response follows the header:
-            client.print("Click <a href=\"/H\">here</a> to turn the LED on pin 5 on.<br>");
-            client.print("Click <a href=\"/L\">here</a> to turn the LED on pin 5 off.<br>");
-
-            // The HTTP response ends with another blank line:
-            client.println();
-            // break out of the while loop:
-            break;
-          } else {    // if you got a newline, then clear currentLine:
-            currentLine = "";
-          }
-        } else if (c != '\r') {  // if you got anything else but a carriage return character,
-          currentLine += c;      // add it to the end of the currentLine
-        }
-
-        // Check to see if the client request was "GET /H" or "GET /L":
-        if (currentLine.endsWith("GET /H")) {
-          digitalWrite(pinNum, HIGH);               // GET /H turns the LED on
-        }
-        if (currentLine.endsWith("GET /L")) {
-          digitalWrite(pinNum, LOW);                // GET /L turns the LED off
-        }
-        if (currentLine.endsWith("POST /receive_image")) {
-          client.print("etes sgdkn sdfkjd f")
-          digitalWrite(pinNum, HIGH);                // GET /L turns the LED off
-        }
-      }
-    }
-    // close the connection:
-    client.stop();
-    Serial.println("Client Disconnected.");
+bool trigger_action(String action) {
+  if (action == "H") {
+    digitalWrite(ledPin, HIGH);
   }
+  else if (action == "L") {
+    digitalWrite(ledPin, LOW);
+  } else {
+    return false;
+  }
+
+  return true; // Return true if action succeeded, false otherwise
 }

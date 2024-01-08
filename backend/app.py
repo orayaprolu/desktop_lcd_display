@@ -1,10 +1,12 @@
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, jsonify
+from flask_cors import CORS
 import requests
 from PIL import Image
 
 # all the routes are stuff that should be called by the frontend
 
 app = Flask(__name__)
+CORS(app)
 
 esp32_ip = '192.168.254.150'
 esp32_port = 80 
@@ -13,8 +15,7 @@ esp32_port = 80
 def hello():
     return 'Hello, this is my Flask app running on my local network for our led image sharing project!'
 
-# Turning the onboard LED on and off
-
+### Turning the onboard LED on and off
 @app.route('/turn_on_led', methods=['GET'])
 def turn_on_led():
     success = trigger_action('H')
@@ -33,10 +34,13 @@ def turn_off_led():
     
 def trigger_action(endpoint):
     url = f'http://{esp32_ip}:{esp32_port}/{endpoint}'
+    print("waiting for response")
     response = requests.get(url)
+    print(response)
+    print("response received")
     return response.ok
     
-# Uploading an image onto the server from the frontend
+### Uploading an image onto the server from the frontend and pinging ESP32 to fetch it from the server
 @app.route('/upload_image', methods=['POST'])
 def upload_image():
     
@@ -53,39 +57,44 @@ def upload_image():
 
     # Save the received image temporarily
     image.save('temp_image.jpg')
-    print("image saved")
+    print("jpg image saved")
 
-    # Open the image using Pillow (PIL)
+    # Open the image using Pillow to covert and it the "with" syntax for resource management
     with Image.open('temp_image.jpg') as img:
-        # Convert the image to a colored bitmap (adjust the mode as needed)
         converted_img = img.convert('RGB')
+        converted_img.save('converted_image.bmp')
+        print("bitmap image saved on server")
 
-        # Save the converted colored bitmap image temporarily
-        converted_img.save('temp_image2.bmp')
-
-    print("going to send image esp32 func")
-    success = send_image_to_esp32('temp_image2.bmp')
-    
+    print("pinging esp32 to call get_image")
+    success = trigger_esp32_to_fetch_image()
     if success:
-        return 'Image sent to ESP32'
+        return jsonify({'message': 'Bitmap image was saved on server and sent to ESP32'}), 200
     else:
-        return 'Failed to send image to ESP32'
+        return jsonify({'error': 'Failed to send image to ESP32'}), 500
 
-# def send_image_to_esp32(image_path):
-#     url = f'http://{esp32_ip}:{esp32_port}/receive_image'  # Replace with your ESP32 endpoint
-#     with open(image_path, 'rb') as img_file:
-#         files = {'image': img_file}
-#         print("sending to ESP32")
-#         response = requests.post(url, files=files)
-#     return response.ok
+    
 
+def trigger_esp32_to_fetch_image():
+    url = f'http://{esp32_ip}:{esp32_port}/receive_image'
+
+    # Send a request to ESP32 to fetch the image
+
+    response = requests.get(url)
+    
+    # Check the response and return success or failure
+    return response.ok
+
+### Sending bmp image from server to ESP
 @app.route('/get_image', methods=['GET'])
 def get_image():
-    # Assuming you have the image path or data to be sent
-    image_path = 'path/to/your/image.jpg'  # Replace this with your image path
-    # Send the image file as a response
-    return send_file(image_path, mimetype='image/jpeg')  # Adjust mimetype as needed
+    print("recieved request to get image from esp32")
 
+    image_path = 'converted_image.bmp'
+    try:
+        print("attempting to send file")
+        return send_file(image_path, mimetype='image/bmp')
+    except FileNotFoundError:
+        return "Image file not found", 404 
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=4000)
