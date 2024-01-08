@@ -26,7 +26,7 @@ void setup() {
   pinMode(ledPin, OUTPUT);
 
   // Route for turning on LED
-  server.on("/on", HTTP_GET, [](AsyncWebServerRequest *request){
+  server.on("/turn_on_led", HTTP_GET, [](AsyncWebServerRequest *request){
     String message;
     if (trigger_action("H")) {
       message = "Turned on LED on ESP32";
@@ -37,7 +37,7 @@ void setup() {
   });
 
   // Route for turning off LED
-  server.on("/off", HTTP_GET, [](AsyncWebServerRequest *request){
+  server.on("/turn_off_led", HTTP_GET, [](AsyncWebServerRequest *request){
     String message;
     if (trigger_action("L")) {
       message = "Turned off LED on ESP32";
@@ -59,8 +59,24 @@ void setup() {
     if (httpResponseCode == HTTP_CODE_OK) {
       Serial.println("Image fetched successfully");
 
-      // Supposed to recieve a bitmap image from /get_image and I want to save that image locally on my esp32
-      response = ... 
+      // Just testing to see if image data is being sent, just slap in txt file for now, make sure to create image.txt
+      // Create a file on ESP32's file system
+      File file = SPIFFS.open("/image.txt", FILE_WRITE);
+
+      // If the file is successfully opened
+      if (file) {
+        // Read data from the HTTP response
+        WiFiClient *stream = http.getStreamPtr();
+        while (stream->available()) {
+          char c = stream->read();
+          file.write(c); // Write each received byte to the file
+        }
+
+        file.close();
+        Serial.println("Image data saved to image.txt");
+      } else {
+        Serial.println("Failed to open file for writing");
+      }
       
     } else {
       Serial.print("Failed to fetch image. Response code: ");

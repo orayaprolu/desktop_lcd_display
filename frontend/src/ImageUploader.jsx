@@ -4,7 +4,8 @@ import './ImageUploader.css'; // Import the CSS file
 function ImageUploader() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
-  const serverAddress = "http://192.168.254.161:4000"
+  const [binaryData, setBinaryData] = useState(''); // State to store binary data
+  const serverAddress = "http://127.0.0.1:4000"
   
   // Function to handle file selection
   const handleFileChange = (e) => {
@@ -56,6 +57,27 @@ function ImageUploader() {
       });
   };
 
+  const handleFetchImageAndBinary = () => {
+    fetch(`${serverAddress}/get_image`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.arrayBuffer(); // Fetch image as ArrayBuffer
+      })
+      .then(buffer => {
+        // Convert ArrayBuffer to binary representation (hexadecimal)
+        const byteArray = new Uint8Array(buffer);
+        const binaryString = Array.from(byteArray)
+          .map(byte => ('0' + byte.toString(16)).slice(-2))
+          .join('');
+        setBinaryData(binaryString); // Store binary data in state
+      })
+      .catch(error => {
+        console.error('There was an error fetching the image:', error);
+      });
+  };
+
   // Function to delete the image
   const handleDeleteImage = () => {
     // Clear the displayed image URL locally
@@ -99,6 +121,7 @@ function ImageUploader() {
       {/* Image manipulation buttons */}
       <div className="button-group">
         <button onClick={handleFetchImage}>Fetch Image</button>
+        <button onClick={handleFetchImageAndBinary}>Fetch Image & Binary</button>
         <button onClick={handleDeleteImage}>Delete Image</button>
         <button onClick={handleTurnOnLED}>Turn On LED</button>
         <button onClick={handleTurnOffLED}>Turn Off LED</button>
@@ -106,6 +129,14 @@ function ImageUploader() {
 
       {/* Display the uploaded image */}
       {imageUrl && <img src={imageUrl} alt="Uploaded" className="uploaded-image" />}
+
+      {/* Display the binary data */}
+      {binaryData && (
+        <div>
+          <h3>Binary Data Representation:</h3>
+          <p>{binaryData}</p>
+        </div>
+      )}
     </div>
   );
 }
