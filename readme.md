@@ -37,26 +37,31 @@ Follow these steps to set up and run both the Flask backend and the React fronte
 
    ```bash
    cd backend
+   ```
 
 2. Create Python virtual environment
   
   ```bash
   python -m venv venv
+  ```
 
 3. Activate virtual environment
   
   ```bash
   source venv/bin/activate
+  ```
 
 4. Install dependencies
   
   ```bash
   pip install -r requirements.txt
+  ```
 
 5. Run the Flask dev server (making sure it is open to all trafic with --host=0.0.0.0), I like to run it on 4000 which usually isn't occupied
   
   ```bash
   flask run --host=0.0.0.0 --port=4000
+  ```
 
 ### Frontend Setup
 
@@ -64,16 +69,19 @@ Follow these steps to set up and run both the Flask backend and the React fronte
 
    ```bash
    cd frontend
+   ```
 
 2. Install frontend dependencies
   
   ```bash
   npm install
+  ```
 
 3. Start your frontend locally
   
   ```bash
   npm run dev
+  ```
 
 ### License 
 
