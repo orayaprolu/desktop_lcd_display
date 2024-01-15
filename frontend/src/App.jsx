@@ -1,4 +1,4 @@
-import ImageUploader from './ImageUploader.jsx'
+import ImageUploader from './components/ImageUploader/ImageUploader.jsx'
 
 function App() { 
   return(
